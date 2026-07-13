@@ -3,26 +3,41 @@ import customtkinter as ctk
 class Sidebar(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, corner_radius=0, **kwargs)
-        self.grid_rowconfigure(4, weight=1) 
+        self.master = master
+        self._next_row = 0
 
-        self.logo_label = ctk.CTkLabel(self, text="PyStego", font=ctk.CTkFont(size=20, weight="bold"))
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        logo_label = ctk.CTkLabel(
+            self, text="PyStego", font=ctk.CTkFont(size=20, weight="bold")
+        )
+        self._place_widget(logo_label, pady=(20, 10))
 
-        self.btn_hide_text = ctk.CTkButton(self, text="Testo in Immagine", command=self.show_text_stego)
-        self.btn_hide_text.grid(row=1, column=0, padx=20, pady=10)
+        self.btn_encode = self._add_button(
+            command=self.show_encode_view,
+            text="Codifica (Nascondi)",
+        )
 
-        self.btn_hide_image = ctk.CTkButton(self, text="Immagine in Immagine", command=self.show_image_stego)
-        self.btn_hide_image.grid(row=2, column=0, padx=20, pady=10)
-        
-        self.btn_ssim = ctk.CTkButton(self, text="Calcola SSIM", command=self.show_ssim_tool)
-        self.btn_ssim.grid(row=3, column=0, padx=20, pady=10)
+        self.btn_decode = self._add_button(
+            command=self.show_decode_view,
+            text="Decodifica (Estrai)",
+        )
 
-    # 4. Metodi segnaposto (placeholder) per evitare crash
-    def show_text_stego(self):
-        print("Mostra schermata Testo in Immagine")
+        self.grid_rowconfigure(self._next_row, weight=1)
 
-    def show_image_stego(self):
-        print("Mostra schermata Immagine in Immagine")
+    def _grid_next(self):
+        row = self._next_row
+        self._next_row += 1
+        return row
 
-    def show_ssim_tool(self):
-        print("Mostra schermata Calcola SSIM")
+    def _place_widget(self, widget, column=0, padx=20, pady=10):
+        widget.grid(row=self._grid_next(), column=column, padx=padx, pady=pady)
+        return widget
+
+    def _add_button(self, command, text, **kwargs):
+        button = ctk.CTkButton(self, command=command, text=text, **kwargs)
+        return self._place_widget(button)
+
+    def show_encode_view(self):
+        self.master.show_frame("encode")
+
+    def show_decode_view(self):
+        self.master.show_frame("decode")

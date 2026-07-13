@@ -1,4 +1,8 @@
-from .gui.app import App
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from gui.app import App
 
 def main():
     app = App()
