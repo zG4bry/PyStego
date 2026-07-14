@@ -1,12 +1,13 @@
 import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from gui.app import App
+from .gui.app import App
 
 def main():
     app = App()
-    app.mainloop()
+    try:
+        app.mainloop()
+    except KeyboardInterrupt:
+        app.destroy()
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
