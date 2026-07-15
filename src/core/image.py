@@ -12,25 +12,30 @@ class Image:
     def __init__(self):
         self.width = 0
         self.height = 0
-        self.array = None
+        self.image = None
 
-    def open_image_as_array(self, path):
-        if not self.array:
+    def load(self, path: str) -> bool:
+        if not self.image:
             try:
-                with PILImage.open(path) as img:
-                    self.array = np.array(img)
+                with PILImage.open(path).convert("RGBA") as img:
+                    self.image = np.array(img, dtype=np.uint8).ravel()
                     self.width, self.height = img.size
-                return self.array
+                return True
             except FileNotFoundError:
                 raise FileNotFoundError(f"Immagine non trovata: {path}")
             except Exception as e:
                 raise Exception(f"Errore durante il caricamento dell'immagine: {e}")
         else:
-            raise Exception("Immagine già caricata")
+            print("Immagine già caricata")
+            return False
 
     def save(self, data, path, ext):
+        if self.image is None:
+            return False
         try:
-            PILImage.fromarray(data).save(Image._png_path(path), ext)
+            img_array = data.reshape(self.height, self.width, 4)
+            PILImage.fromarray(img_array).save(Image._png_path(path), ext)
+            return True
         except Exception as e:
             raise Exception(f"Errore durante il salvataggio dell'immagine: {e}")
 
@@ -45,3 +50,4 @@ class Image:
         if Path(path).suffix != ".png":
             path = str(Path(path).with_suffix(".png"))
         return path
+    
