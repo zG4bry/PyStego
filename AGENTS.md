@@ -13,13 +13,15 @@ PyStego: a steganography GUI (hide text/images inside images) built with customt
 - Tests use temp files under `/tmp`; no fixtures, services, or network required.
 
 ## Dependencies
-- `requirements.txt` pins `customtkinter`, `numpy`, `pillow`, `pytest`. Install with `venv/bin/pip install -r requirements.txt`.
+- `requirements.txt` pins `customtkinter`, `numpy`, `pillow`, `pytest`, and `scikit-image`. Install with `venv/bin/pip install -r requirements.txt`.
 - `venv/` is Python 3.14 and gitignored. Pillow's C extension previously failed to import under 3.14 (`cannot import name 'Image' from 'PIL'`); a force-reinstall of pillow fixed it. If it breaks again: `venv/bin/pip install --force-reinstall --no-deps pillow`.
 
 ## Architecture
 - Entrypoint: `src/main.py` -> `src/gui/app.py` (`App`, a `ctk.CTk`) -> sidebar + `EncodeFrame` / `DecodeFrame`.
 - `src/core/encoder.py`: steganography as **module-level functions** (`encode`, `decode`, `required_channels`, `EncodingLevel`). `EncodingLevel` LOW/MED/HIGH = 1/2/4 bits per channel.
-- `src/utils/utils.py`: image load/save and text/image <-> array conversion. `save(data, w, h, path, ext)` receives a **flat numpy array** (not a PIL image) and reshapes it to `(h, w, ch)`; for `ch==4` it writes RGBA, else RGB. `image_to_flat_rgba` always converts to RGBA.
+- `src/core/metrics.py`: true SSIM calculation (`ssim()`) via `scikit-image`.
+- `src/gui/image_preview.py`: reusable side-by-side image preview component using `CTkImage`.
+- `src/utils/utils.py`: image load/save and text/image <-> array conversion. `flat_to_image` allows GUI to preview the 1D array returned by `encode()` before writing to disk.
 
 ## Encoder contract (easy to get wrong)
 - `encode(img, secret, level)` returns the modified **flat 1D RGBA uint8 array** (length `H*W*4`). Callers reshape to `(H, W, 4)` and persist via `utils.save(data, w, h, path, "png")`.

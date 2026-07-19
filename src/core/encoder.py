@@ -100,7 +100,10 @@ def required_channels(size, level: EncodingLevel) -> int:
 
 
 def encode(image: Image.Image, secret, level: EncodingLevel):
-    secret_array = utils.to_array(secret)
+    try:
+        secret_array = utils.to_array(secret)
+    except TypeError as e:
+        raise ValueError(str(e))
 
     if isinstance(secret, Image.Image):
         secret_type = _TYPE_IMAGE

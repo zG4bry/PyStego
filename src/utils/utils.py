@@ -9,9 +9,7 @@ def load(path):
             return img
     except FileNotFoundError:
         raise FileNotFoundError(f"Immagine non trovata: {path}")
-    except UnidentifiedImageError:
-        raise ValueError(f"File non riconosciuto come immagine: {path}")
-    except Exception as e:
+    except (UnidentifiedImageError, OSError) as e:
         raise ValueError(f"Errore durante il caricamento dell'immagine: {e}")
 
 
@@ -34,15 +32,25 @@ def image_to_flat_rgba(img: Image.Image) -> np.ndarray:
     return np.array(img.convert("RGBA"), dtype=np.uint8).ravel()
 
 
+def flat_to_image(data: np.ndarray, width: int, height: int) -> Image.Image:
+    """Ricostruisce un'immagine PIL dall'array numpy piatto prodotto dall'encoder."""
+    channels = data.size // (width * height)
+    img_array = data.reshape(height, width, channels)
+    return Image.fromarray(img_array, "RGBA" if channels == 4 else "RGB")
+
+
+def make_thumbnail(img: Image.Image, max_side: int = 260) -> Image.Image:
+    """Crea una miniatura per l'anteprima, preservando l'aspect ratio."""
+    thumb = img.copy()
+    thumb.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    return thumb
+
+
 def save(data: np.ndarray, width: int, height: int, path, ext: str = "png"):
     try:
-        channels = data.size // (width * height)
-        img_array = data.reshape(height, width, channels)
-        Image.fromarray(img_array, "RGBA" if channels == 4 else "RGB").save(
-            png_path(path), ext.upper()
-        )
-        return True
-    except Exception as e:
+        img = flat_to_image(data, width, height)
+        img.save(png_path(path), ext.upper())
+    except (OSError, ValueError) as e:
         raise ValueError(f"Errore durante il salvataggio dell'immagine: {e}")
 
 

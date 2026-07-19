@@ -27,6 +27,22 @@ def test_roundtrip_image_all_levels():
         assert np.array_equal(np.array(out), np.array(secret))
 
 
+def test_roundtrip_image_rectangular_all_levels():
+    secret = Image.new("RGB", (40, 10), (200, 100, 50))
+    for level in EncodingLevel:
+        flat = encode(_cover_rgba(), secret, level)
+        kind, out = decode(Image.fromarray(flat.reshape(128, 128, 4), "RGBA"), level)
+        assert kind == "image"
+        assert np.array_equal(np.array(out), np.array(secret))
+
+
+def test_encode_invalid_secret_type_raises_valueerror():
+    import pytest
+
+    with pytest.raises(ValueError):
+        encode(_cover_rgba(), 12345, EncodingLevel.LOW)
+
+
 def test_alpha_preserved():
     # Una cover con alpha parziale deve conservare l'alpha dopo encode+save+decode
     cover = Image.new("RGBA", (64, 64), (10, 20, 30, 123))

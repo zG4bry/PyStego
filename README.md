@@ -17,6 +17,7 @@ Eseguire sempre dal root del repo. È una GUI Tk, quindi serve un display
 ```bash
 venv/bin/pip install -r requirements.txt
 ```
+Il progetto ora usa anche `scikit-image` per calcolare il vero valore SSIM delle immagini.
 
 ## Funzionamento
 
