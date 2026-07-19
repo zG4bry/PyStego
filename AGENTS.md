@@ -1,26 +1,28 @@
 # AGENTS.md
 
-PyStego: a steganography GUI (hide text/images inside images) built with customtkinter.
+PyStego: a steganography GUI (hide text/images inside images) built with customtkinter. Code, comments, and UI strings are in Italian — keep that convention.
 
-## Running the app
-- Run from the repo root as a module: `python -m src.main` (use `venv/bin/python`).
-- Do NOT run `python src/main.py` or run from inside `src/`. Imports are inconsistent: `main.py`/`app.py`/`sidebar.py` use relative imports (`from .gui.app import App`) while `encode_frame.py`/`encoder.py` use absolute `src.`-prefixed imports (`from src.core.encoder import ...`). Only `python -m src.main` from the repo root resolves both.
-- It is a Tk GUI, so it needs a display. In a headless environment it will fail to start (no X/Wayland display).
+## Run the app
+- Run only as a module from the repo root: `venv/bin/python -m src.main`.
+- `src/` uses **relative imports** internally; the only supported way to launch is `python -m src.main` from the repo root. Do NOT reintroduce `from src...` imports in app code.
+- It is a Tk GUI needing a display (X/Wayland); it will not start in a headless environment.
+
+## Tests
+- Run from the repo root: `venv/bin/python -m pytest tests/`.
+- The test file uses **absolute** imports (`from src.core.encoder import ...`), so it relies on the repo root being on `sys.path` (i.e. run from root). This differs from the app's relative-import convention — keep both intact.
+- Tests use temp files under `/tmp`; no fixtures, services, or network required.
 
 ## Dependencies
-- `requirements.txt` lists only `customtkinter==6.0.0`, but the code also imports `PIL` (Pillow) and `numpy`. The `venv/` has all three plus `darkdetect`/`packaging`.
-- `venv/` is Python 3.14 and gitignored. Pillow's C extension previously failed to import under 3.14 (`cannot import name 'Image' from 'PIL'`); a `--force-reinstall` of `pillow` fixed it and it now imports. If it breaks again, reinstall: `venv/bin/pip install --force-reinstall --no-deps pillow`.
+- `requirements.txt` pins `customtkinter`, `numpy`, `pillow`, `pytest`. Install with `venv/bin/pip install -r requirements.txt`.
+- `venv/` is Python 3.14 and gitignored. Pillow's C extension previously failed to import under 3.14 (`cannot import name 'Image' from 'PIL'`); a force-reinstall of pillow fixed it. If it breaks again: `venv/bin/pip install --force-reinstall --no-deps pillow`.
 
 ## Architecture
-- `src/` is a package. Entrypoint: `src/main.py` -> `gui/app.py` (`App`, a `ctk.CTk`).
-- `gui/`: `app.py` (window + frame switching), `sidebar.py`, `encode_frame.py`, `decode_frame.py`.
-- `core/encoder.py`: the steganography engine (`Encoder`, `EncodingLevel` LOW/MED/HIGH = 1/2/4 bits per pixel). Operates on flattened RGBA numpy arrays.
-- `utils/utils.py`: image load/save and text/image <-> array conversion. `save()` enforces PNG output and reshapes to `(height, width, 4)`.
+- Entrypoint: `src/main.py` -> `src/gui/app.py` (`App`, a `ctk.CTk`) -> sidebar + `EncodeFrame` / `DecodeFrame`.
+- `src/core/encoder.py`: steganography as **module-level functions** (`encode`, `decode`, `required_channels`, `EncodingLevel`). `EncodingLevel` LOW/MED/HIGH = 1/2/4 bits per channel.
+- `src/utils/utils.py`: image load/save and text/image <-> array conversion. `save(data, w, h, path, ext)` receives a **flat numpy array** (not a PIL image) and reshapes it to `(h, w, ch)`; for `ch==4` it writes RGBA, else RGB. `image_to_flat_rgba` always converts to RGBA.
 
-## Gotchas
-- `Encoder.decode()` is a stub (`@staticmethod def decode(image, level): pass`); only encoding works. No decode UI either (`decode_frame.py` is a TODO stub).
-- `encode()` is a `@staticmethod` returning the modified **flat 1D RGBA array** (length `H*W*4`). It flattens the cover with `.reshape(-1)`, so callers must reshape via `utils.save(data, w, h, path, ext)`.
-- `encode()` prepends a **4-byte big-endian length header** to the secret; a matching `decode()` must read that header to know the payload length (not yet implemented).
-- The encoding GUI always uses `EncodingLevel.LOW`; there is no UI control to select MED/HIGH.
-- Code, comments, and UI strings are in Italian; keep that convention.
-- No tests, CI, or lint/format/typecheck config exist in this repo.
+## Encoder contract (easy to get wrong)
+- `encode(img, secret, level)` returns the modified **flat 1D RGBA uint8 array** (length `H*W*4`). Callers reshape to `(H, W, 4)` and persist via `utils.save(data, w, h, path, "png")`.
+- Payload layout in the image: `[4-byte big-endian length][1-byte type][secret]`; type `0` = text, `1` = image. For image secrets, `encode` also embeds `(width, height, channels)` as 3×2-byte big-endian before the pixels so `decode` can reconstruct the original. Keep `encode`/`decode` in sync via the shared `_pack_header`/`_unpack_header` helpers.
+- Bits are embedded **only in RGB channels** (alpha is never touched), so transparent covers are preserved. Covers are forced to RGBA inside `image_to_flat_rgba`.
+- `decode(img, level)` returns `(kind, data)`: `("text", str)` or `("image", PIL.Image.Image)`. It raises `ValueError` on missing/invalid secret or wrong level — the GUI must catch these and show them in a label.

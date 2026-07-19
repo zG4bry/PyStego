@@ -104,7 +104,7 @@ def encode(image: Image.Image, secret, level: EncodingLevel):
 
     if isinstance(secret, Image.Image):
         secret_type = _TYPE_IMAGE
-        height, width = secret.size
+        width, height = secret.size
         shape = (width, height, 3)
     else:
         secret_type = _TYPE_TEXT

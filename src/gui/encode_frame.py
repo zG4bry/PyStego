@@ -1,16 +1,12 @@
 import customtkinter as ctk
 from customtkinter import filedialog
-from src.core.encoder import Encoder, EncodingLevel
-import src.utils.utils as utils
-from PIL import Image
+from ..core.encoder import encode, EncodingLevel
+from ..utils import utils
 
 
 class EncodeFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, corner_radius=10, **kwargs)
-        self.cover: Image.Image = None
-        self.secret_txt = None
-        self.secret_img = None
 
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -18,6 +14,16 @@ class EncodeFrame(ctk.CTkFrame):
         self.tabview.add("Nascondi Immagine")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
+
+        self.lbl_level = ctk.CTkLabel(self, text="Livello di codifica:")
+        self.lbl_level.grid(row=1, column=0, padx=20, pady=(0, 0), sticky="w")
+        self.level_var = ctk.StringVar(value="LOW")
+        self.level_menu = ctk.CTkOptionMenu(
+            self,
+            values=[lvl.name for lvl in EncodingLevel],
+            variable=self.level_var,
+        )
+        self.level_menu.grid(row=2, column=0, padx=20, pady=(0, 10), sticky="w")
 
         self._setup_text_tab()
         self._setup_image_tab()
@@ -123,14 +129,21 @@ class EncodeFrame(ctk.CTkFrame):
             label.configure(text=f"Segreto: {filename}")
             self.secret_img = utils.load(filename)
 
+    def _selected_level(self):
+        return EncodingLevel[self.level_var.get()]
+
     def _encode_text(self):
         self.secret_txt = self.textbox_secret.get("0.0", "end-1c")
         if self.secret_txt == self.placeholder_text:
             self.secret_txt = ""
-        if self.cover is None:
+        if getattr(self, "cover", None) is None:
             self.lbl_ssim_text.configure(text="Seleziona un'immagine di copertura")
             return
-        encoded_image = Encoder.encode(self.cover, self.secret_txt, EncodingLevel.LOW)
+        try:
+            encoded_image = encode(self.cover, self.secret_txt, self._selected_level())
+        except ValueError as e:
+            self.lbl_ssim_text.configure(text=str(e))
+            return
         save_path = filedialog.asksaveasfilename(
             defaultextension=".png",
             title="Salva Immagine Codificata",
@@ -149,13 +162,17 @@ class EncodeFrame(ctk.CTkFrame):
             self.lbl_ssim_text.configure(text="SSIM: 0.99 (Simulato)")
 
     def _encode_image(self):
-        if self.cover is None:
+        if getattr(self, "cover", None) is None:
             self.lbl_ssim_img.configure(text="Seleziona un'immagine di copertura")
             return
-        if self.secret_img is None:
+        if getattr(self, "secret_img", None) is None:
             self.lbl_ssim_img.configure(text="Seleziona un'immagine da nascondere")
             return
-        self.final_image = Encoder.encode(self.cover, self.secret_img, EncodingLevel.LOW)
+        try:
+            self.final_image = encode(self.cover, self.secret_img, self._selected_level())
+        except ValueError as e:
+            self.lbl_ssim_img.configure(text=str(e))
+            return
         save_path = filedialog.asksaveasfilename(
             defaultextension=".png",
             title="Salva Immagine Codificata",
