@@ -1,38 +1,92 @@
 # PyStego
 
-Steganografia GUI: nascondi testo o immagini all'interno di altre immagini,
-scritta con customtkinter.
+Strumento di steganografia LSB (Least Significant Bit) con interfaccia grafica. Permette di nascondere testo o immagini all'interno di un'immagine di copertura.
 
-## Avvio
+## Funzionalità
 
-```bash
-venv/bin/python -m src.main
+- **Codifica LSB** a 3 livelli (1, 2 o 4 bit per canale RGB)
+- **Nascondere testo** o **immagini** in un'immagine di copertura
+- **Interfaccia grafica** moderna (customtkinter)
+- **Metrica SSIM** per valutare la qualità dell'immagine codificata
+- **Preservazione del canale alpha**
+- **Header binario** con lunghezza e tipo del segreto
+
+## Struttura del progetto
+
+```
+PyStego/
+├── src/
+│   ├── main.py              # Entry point
+│   ├── core/
+│   │   ├── encoder.py       # Logica LSB encode/decode
+│   │   └── metrics.py       # Calcolo SSIM
+│   ├── gui/
+│   │   ├── app.py           # Finestra principale
+│   │   ├── sidebar.py       # Navigazione
+│   │   ├── encode_frame.py  # Frame di codifica
+│   │   ├── decode_frame.py  # Frame di decodifica
+│   │   └── image_preview.py # Widget anteprima
+│   └── utils/
+│       └── utils.py         # Utilità per immagini
+├── tests/
+│   ├── test_encoder.py      # Test roundtrip
+│   └── test_metrics.py      # Test metrica
+└── requirements.txt
 ```
 
-Eseguire sempre dal root del repo. È una GUI Tk, quindi serve un display
-(X/Wayland); in ambiente headless non parte.
-
-## Dipendenze
+## Installazione
 
 ```bash
-venv/bin/pip install -r requirements.txt
+# Crea e attiva virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Installa dipendenze
+pip install -r requirements.txt
 ```
-Il progetto ora usa anche `scikit-image` per calcolare il vero valore SSIM delle immagini.
 
-## Funzionamento
+## Utilizzo
 
-- `src/core/encoder.py`: motore di steganografia (`encode`/`decode`,
-  `EncodingLevel` LOW/MED/HIGH = 1/2/4 bit per canale). Lavora solo sui canali
-  RGB (l'alpha resta intatto).
-- Il payload nel file è: `[4B lunghezza big-endian][1B tipo][segreto]`.
-  Tipo `0` = testo, `1` = immagine; per i segreti-immagine seguono
-  `width`, `height`, `channels` (3×2 byte big-endian).
-- `src/gui/`: `app.py` (finestra + cambio viste), `sidebar.py`,
-  `encode_frame.py`, `decode_frame.py`. Entrambi i frame permettono di
-  scegliere il livello di codifica/decodifica.
+```bash
+# Avvia l'applicazione
+python -m src.main
+```
+
+### Codifica (Nascondere)
+
+1. Seleziona un'immagine di copertura (PNG, JPG, BMP)
+2. Scegli il livello di codifica (LOW/MED/HIGH)
+3. Inserisci il testo da nascondere **oppure** seleziona un'immagine segreta
+4. Clicca "Codifica" per generare l'anteprima
+5. Clicca "Salva" per salvare l'immagine steganografata
+
+### Decodifica (Estrarre)
+
+1. Seleziona un'immagine steganografata
+2. Seleziona lo stesso livello di codifica usato per nascondere
+3. Clicca "Estrai"
+4. Il segreto estratto apparirà (testo o immagine)
+
+## Livelli di codifica
+
+| Livello | Bit per canale | Canali per byte | Capacità |
+|---------|----------------|-----------------|----------|
+| LOW     | 1              | 8               | 12.5%    |
+| MED     | 2              | 4               | 25%      |
+| HIGH    | 4              | 2               | 50%      |
+
+**Nota:** livelli più alti offrono maggiore capacità ma peggiore qualità visiva.
 
 ## Test
 
 ```bash
-venv/bin/python -m pytest tests/
+pytest
 ```
+
+## Dipendenze
+
+- `customtkinter` - GUI moderna
+- `numpy` - Manipolazione array
+- `pillow` - Gestione immagini
+- `scikit-image` - Calcolo SSIM
+- `pytest` - Framework di test
