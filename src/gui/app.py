@@ -8,7 +8,7 @@ class App(ctk.CTk):
         super().__init__()
         
         self.title("PyStego")
-        self.geometry("900x640")
+        self.geometry("1000x740")
         self.minsize(800, 600)
 
         # Layout principale

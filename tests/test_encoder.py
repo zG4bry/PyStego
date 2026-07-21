@@ -56,6 +56,16 @@ def test_alpha_preserved():
     assert np.all(np.array(loaded)[:, :, 3] == 123)  # alpha preservato su disco
 
 
+def test_roundtrip_image_rgba_all_levels():
+    secret = Image.new("RGBA", (16, 16), (200, 100, 50, 180))
+    for level in EncodingLevel:
+        flat = encode(_cover_rgba(), secret, level)
+        kind, out = decode(Image.fromarray(flat.reshape(128, 128, 4), "RGBA"), level)
+        assert kind == "image"
+        assert out.mode == "RGBA"
+        assert np.array_equal(np.array(out), np.array(secret))
+
+
 def test_roundtrip_text_png_on_disk():
     secret = "testo su disco"
     flat = encode(_cover_rgba(), secret, EncodingLevel.HIGH)

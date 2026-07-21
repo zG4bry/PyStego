@@ -8,7 +8,7 @@ from .image_preview import ImagePreview
 
 class EncodeFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
-        super().__init__(master, corner_radius=10, **kwargs)
+        super().__init__(master, **kwargs)
 
         self.tabview = ctk.CTkTabview(self, command=self._on_tab_change)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -66,10 +66,10 @@ class EncodeFrame(ctk.CTkFrame):
         self.lbl_esito_img.configure(text="")
 
     def _on_resize(self, event):
-        width = self.winfo_width() - 40
         for lbl in (self.lbl_esito_text, self.lbl_esito_img):
-            if width > 0:
-                lbl.configure(wraplength=width)
+            w = lbl.winfo_width()
+            if w > 0:
+                lbl.configure(wraplength=w)
 
     def _selected_level(self):
         return EncodingLevel[self.level_var.get()]
@@ -106,6 +106,7 @@ class EncodeFrame(ctk.CTkFrame):
         frame_previews.grid(row=2, column=0, sticky="nsew", padx=20, pady=10)
         frame_previews.grid_columnconfigure(0, weight=1)
         frame_previews.grid_columnconfigure(1, weight=1)
+        frame_previews.grid_rowconfigure(0, weight=1)
 
         self.preview_orig_text = ImagePreview(frame_previews, "Copertura (Originale)")
         self.preview_orig_text.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
@@ -124,7 +125,7 @@ class EncodeFrame(ctk.CTkFrame):
         self.btn_save_text.pack(side="left", padx=10)
 
         self.lbl_esito_text = ctk.CTkLabel(frame_bot, text="", font=ctk.CTkFont(weight="bold"), justify="left")
-        self.lbl_esito_text.pack(side="left", padx=20)
+        self.lbl_esito_text.pack(side="left", fill="x", expand=True, padx=20)
 
     def _clear_placeholder(self, event):
         current_text = self.textbox_secret.get("0.0", "end-1c")
@@ -179,6 +180,10 @@ class EncodeFrame(ctk.CTkFrame):
             
         except ValueError as e:
             self.lbl_esito_text.configure(text=f"Errore: {e}", text_color="red")
+        except Exception as e:
+            self.lbl_esito_text.configure(
+                text=f"Errore imprevisto: {e}", text_color="red"
+            )
 
     def _save_text(self):
         if self.encoded_flat_text is None:
@@ -222,6 +227,7 @@ class EncodeFrame(ctk.CTkFrame):
         frame_previews.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
         frame_previews.grid_columnconfigure(0, weight=1)
         frame_previews.grid_columnconfigure(1, weight=1)
+        frame_previews.grid_rowconfigure(0, weight=1)
 
         self.preview_orig_img = ImagePreview(frame_previews, "Copertura (Originale)")
         self.preview_orig_img.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
@@ -240,7 +246,7 @@ class EncodeFrame(ctk.CTkFrame):
         self.btn_save_img.pack(side="left", padx=10)
 
         self.lbl_esito_img = ctk.CTkLabel(frame_bot, text="", font=ctk.CTkFont(weight="bold"), justify="left")
-        self.lbl_esito_img.pack(side="left", padx=20)
+        self.lbl_esito_img.pack(side="left", fill="x", expand=True, padx=20)
 
     def _on_cover_selected_img(self):
         filename = filedialog.askopenfilename(
@@ -292,6 +298,10 @@ class EncodeFrame(ctk.CTkFrame):
             
         except ValueError as e:
             self.lbl_esito_img.configure(text=f"Errore: {e}", text_color="red")
+        except Exception as e:
+            self.lbl_esito_img.configure(
+                text=f"Errore imprevisto: {e}", text_color="red"
+            )
 
     def _save_image(self):
         if self.encoded_flat_img is None:

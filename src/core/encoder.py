@@ -18,7 +18,6 @@ _BITS_PER_CHANNEL = {
     EncodingLevel.HIGH: 4,
 }
 
-# Costanti dell'header del payload
 _HEADER_LEN_BYTES = 4  # lunghezza segreto in byte (big-endian)
 _HEADER_TYPE_BYTES = 1  # 0 = testo, 1 = immagine
 _HEADER_SHAPE_BYTES = 6  # per immagini: width(2) + height(2) + channels(2), big-endian
@@ -26,7 +25,7 @@ _TYPE_TEXT = 0
 _TYPE_IMAGE = 1
 
 
-def _params(level: EncodingLevel):
+def _params(level: EncodingLevel) -> tuple[int, int, np.uint8]:
     bits_per_channel = _BITS_PER_CHANNEL[level]
     channels_per_byte = 8 // bits_per_channel
     mask = np.uint8((1 << bits_per_channel) - 1)
@@ -42,13 +41,16 @@ def _pack_header(secret_len: int, secret_type: int, shape=None) -> bytes:
 
 
 def _rgba_idx(rgb_idx: int) -> int:
-    # L'array piatto è RGBA (4 canali a pixel), ma i bit del segreto vivono solo
-    # nei canali RGB. L'indice `rgb_idx` conta i canali RGB; lo mappa nell'indice
-    # dell'array RGBA saltando il canale alpha (ogni 4° posizione).
     return rgb_idx + (rgb_idx // 3)
 
 
-def _write_byte(image_flat, rgb_idx, byte, bits_per_channel, mask):
+def _write_byte(
+    image_flat: np.ndarray,
+    rgb_idx: int,
+    byte: int,
+    bits_per_channel: int,
+    mask: np.uint8,
+) -> int:
     channels_per_byte = 8 // bits_per_channel
     for pos in range(channels_per_byte):
         chunk = (byte >> (pos * bits_per_channel)) & mask
@@ -58,7 +60,9 @@ def _write_byte(image_flat, rgb_idx, byte, bits_per_channel, mask):
     return rgb_idx
 
 
-def _read_byte(image_flat, rgb_idx, bits_per_channel, mask):
+def _read_byte(
+    image_flat: np.ndarray, rgb_idx: int, bits_per_channel: int, mask: np.uint8
+) -> tuple[int, int]:
     channels_per_byte = 8 // bits_per_channel
     byte = 0
     for pos in range(channels_per_byte):
@@ -69,12 +73,13 @@ def _read_byte(image_flat, rgb_idx, bits_per_channel, mask):
     return byte, rgb_idx
 
 
-def _unpack_header(payload, level: EncodingLevel):
+def _unpack_header(
+    payload: np.ndarray, level: EncodingLevel
+) -> tuple[int, int, tuple[int, int, int] | None]:
     bits_per_channel, channels_per_byte, mask = _params(level)
     rgb_idx = 0
     secret_len = 0
     for i in range(_HEADER_LEN_BYTES):
-        # Big-endian: il byte 0 è il più significativo
         byte, rgb_idx = _read_byte(payload, rgb_idx, bits_per_channel, mask)
         secret_len |= int(byte) << (8 * (_HEADER_LEN_BYTES - 1 - i))
     type_byte, rgb_idx = _read_byte(payload, rgb_idx, bits_per_channel, mask)
@@ -94,24 +99,24 @@ def _unpack_header(payload, level: EncodingLevel):
     return secret_len, secret_type, shape
 
 
-def required_channels(size, level: EncodingLevel) -> int:
+def required_channels(size: int, level: EncodingLevel) -> int:
     _, channels_per_byte, _ = _params(level)
     return size * channels_per_byte
 
 
-def encode(image: Image.Image, secret, level: EncodingLevel):
+def encode(image: Image.Image, secret, level: EncodingLevel) -> np.ndarray:
+    if isinstance(secret, Image.Image):
+        secret_type = _TYPE_IMAGE
+        width, height = secret.size
+        shape = (width, height, len(secret.getbands()))
+    else:
+        secret_type = _TYPE_TEXT
+        shape = None
+
     try:
         secret_array = utils.to_array(secret)
     except TypeError as e:
         raise ValueError(str(e))
-
-    if isinstance(secret, Image.Image):
-        secret_type = _TYPE_IMAGE
-        width, height = secret.size
-        shape = (width, height, 3)
-    else:
-        secret_type = _TYPE_TEXT
-        shape = None
 
     bits_per_channel, _, mask = _params(level)
     header = _pack_header(len(secret_array), secret_type, shape)
@@ -136,12 +141,12 @@ def encode(image: Image.Image, secret, level: EncodingLevel):
     return image_flat
 
 
-def decode(image: Image.Image, level: EncodingLevel):
+def decode(image: Image.Image, level: EncodingLevel) -> tuple[str, str | Image.Image]:
     bits_per_channel, channels_per_byte, mask = _params(level)
     image_flat = utils.image_to_flat_rgba(image)
 
-    # Legge prima l'header (lunghezza + tipo) per sapere quanto spazio occupa
-    header_len_rgb = (_HEADER_LEN_BYTES + _HEADER_TYPE_BYTES) * channels_per_byte
+    header_total_bytes = _HEADER_LEN_BYTES + _HEADER_TYPE_BYTES
+    header_len_rgb = header_total_bytes * channels_per_byte
     if header_len_rgb > image_flat.size - (image_flat.size // 4):
         raise ValueError("L'immagine non contiene un segreto valido")
 
@@ -150,8 +155,6 @@ def decode(image: Image.Image, level: EncodingLevel):
     if secret_type not in (_TYPE_TEXT, _TYPE_IMAGE):
         raise ValueError("L'immagine non contiene un segreto valido")
 
-    # Offset dati: header completo (inclusi gli eventuali 6 byte di shape per immagini)
-    header_total_bytes = _HEADER_LEN_BYTES + _HEADER_TYPE_BYTES
     if secret_type == _TYPE_IMAGE:
         header_total_bytes += _HEADER_SHAPE_BYTES
     rgb_idx = header_total_bytes * channels_per_byte
@@ -173,4 +176,5 @@ def decode(image: Image.Image, level: EncodingLevel):
         arr = np.frombuffer(bytes(data), dtype=np.uint8).reshape(
             height, width, channels
         )
-        return "image", Image.fromarray(arr, "RGB")
+        mode = "RGBA" if channels == 4 else "RGB"
+        return "image", Image.fromarray(arr, mode)

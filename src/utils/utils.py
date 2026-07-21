@@ -39,13 +39,6 @@ def flat_to_image(data: np.ndarray, width: int, height: int) -> Image.Image:
     return Image.fromarray(img_array, "RGBA" if channels == 4 else "RGB")
 
 
-def make_thumbnail(img: Image.Image, max_side: int = 260) -> Image.Image:
-    """Crea una miniatura per l'anteprima, preservando l'aspect ratio."""
-    thumb = img.copy()
-    thumb.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-    return thumb
-
-
 def save(data: np.ndarray, width: int, height: int, path, ext: str = "png"):
     try:
         img = flat_to_image(data, width, height)
