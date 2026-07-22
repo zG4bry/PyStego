@@ -68,7 +68,7 @@ class EncodeFrame(ctk.CTkFrame):
     def _on_resize(self, event):
         for lbl in (self.lbl_esito_text, self.lbl_esito_img):
             w = lbl.winfo_width()
-            if w > 0:
+            if w > 50:
                 lbl.configure(wraplength=w)
 
     def _selected_level(self):

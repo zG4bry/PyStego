@@ -92,7 +92,7 @@ class DecodeFrame(ctk.CTkFrame):
 
     def _on_resize(self, event):
         w = self.lbl_status.winfo_width()
-        if w > 0:
+        if w > 50:
             self.lbl_status.configure(wraplength=w)
 
     def _selected_level(self):
